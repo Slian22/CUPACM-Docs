@@ -1,0 +1,99 @@
+name: Publish releases to CDN repository
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'VERSION'
+
+jobs:
+  publish:
+    if: github.repository == 'CUP-ACM-Programming-Club/CUPACM-Docs'
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [12.x]
+
+    steps:
+      - uses: actions/checkout@v2
+        name: Checkout code
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Use Node.js environment
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Build distribution
+        run: |
+          npm i
+          npm run docs:build
+          ./.github/shell/after_build.sh
+
+      - name: Update version to current repository
+        run: |
+          git config --local user.email "gxlhybh@gmail.com"
+          git config --local user.name "Ryan Lee"
+          git add VERSION
+          git commit -m "Auto commit version $(cat VERSION)"
+          git push -f https://ryanlee2014:$GITHUB_TOKEN@github.com/CUP-ACM-Programming-Club/CUPACM-Docs.git master
+        env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_ACTIONS_TOKEN }}
+
+      - name: Checkout CDN Repository
+        uses: actions/checkout@v2
+        with:
+          repository: CUP-ACM-Programming-Club/CUPACM-Docs-CDN
+          path: cdn
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Move file to cdn folder
+        run: |
+          cp -r docs/.vuepress/dist/* cdn/
+
+      - name: Push to Coding.net
+        run: |
+          git clone https://rPjpOFiryN:$CODING_TOKEN@e.coding.net/RyanLee/CUPACM-Docs.git coding
+          cp -r docs/.vuepress/dist/* coding/
+          cd coding
+          git config --local user.email "gxlhybh@gmail.com"
+          git config --local user.name "RyanLee"
+          git add --all
+          git commit -m "deploy v$(cat ../VERSION) `TZ=UTC-8 date +'%Y-%m-%d %H:%M:%S'`"
+          git push -f https://rPjpOFiryN:$CODING_TOKEN@e.coding.net/RyanLee/CUPACM-Docs.git
+        env:
+          CODING_TOKEN: ${{ secrets.CODING_TOKEN }}
+
+
+      - name: Commit files and push
+        run: |
+          cd cdn
+          git config --local user.email "gxlhybh@gmail.com"
+          git config --local user.name "Ryan Lee"
+          git add --all
+          git commit -m "deploy v$(cat ../VERSION) `TZ=UTC-8 date +'%Y-%m-%d %H:%M:%S'`"
+          git tag "v`cat ../VERSION`"
+          git push -f https://ryanlee2014:$GITHUB_TOKEN@github.com/CUP-ACM-Programming-Club/CUPACM-Docs-CDN.git master --tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_ACTIONS_TOKEN }}
+
+      - name: Update Github Pages
+        run: |
+          git clone https://github.com/CUP-ACM-Programming-Club/CUPACM-Docs.git -b gh-pages pages
+          rm -rf pages/*.html
+          rm -rf pages/assets
+          rm -rf pages/dist
+          cp -r docs/.vuepress/dist/* pages
+          cd pages
+          git config user.email 'gxlhybh@gmail.com'
+          git config user.name 'Ryan Lee'
+          git add -A
+          git commit -m "deploy `TZ=UTC-8 date +'%Y-%m-%d %H:%M:%S'`"
+          git push -f https://ryanlee2014:$GITHUB_TOKEN@github.com/CUP-ACM-Programming-Club/CUPACM-Docs.git gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_ACTIONS_TOKEN }}

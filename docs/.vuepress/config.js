@@ -1,14 +1,20 @@
 const glob = require('glob');
 const path = require('path');
 const fs = require('fs');
+const version = fs.readFileSync(path.resolve(process.cwd(), "VERSION"));
+
+console.log(`Version: ${version}`);
+
+const webPath = `https://cdn.jsdelivr.net/gh/CUP-ACM-Programming-Club/CUPACM-Docs-CDN@v${version}/`;
 module.exports = {
-    base: '/',
+    base: "/",
     title: "CUPACM Documents",
     head: [
         ['link', {rel: 'stylesheet', href: 'https://shadow.elemecdn.com/npm/katex@0.11.0/dist/katex.min.css'}]
     ],
     plugins: [
         ['@vuepress/back-to-top'],
+        ['mermaidjs'],
         ['@dovyp/vuepress-plugin-clipboard-copy', true]
         ],
     markdown: {
@@ -35,6 +41,9 @@ module.exports = {
             },
             {
                 text: '构建本文档', link: '/contribute/'
+            },
+            {
+                text: 'CUPOJ开发文档', link: '/oj_document/'
             },
             {
                 text: 'Jetbrains教育版申请', link: '/tools/'
